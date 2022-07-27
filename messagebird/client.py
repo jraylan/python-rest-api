@@ -32,6 +32,8 @@ REST_TYPE = 'rest'
 
 CONVERSATION_API_ROOT = 'https://conversations.messagebird.com/v1/'
 CONVERSATION_PATH = 'conversations'
+CONVERSATION_CONTACT_PATH = 'contact'
+CONVERSATION_STATUS_LIST = ['active', 'archived', 'all']
 CONVERSATION_MESSAGES_PATH = 'messages'
 CONVERSATION_WEB_HOOKS_PATH = 'webhooks'
 CONVERSATION_TYPE = 'conversation'
@@ -358,9 +360,27 @@ class Client(object):
     def group_remove_contact(self, groupId, contactId):
         self.request_plain_text('groups/' + str(groupId) + '/contacts/' + str(contactId), 'DELETE', None)
 
-    def conversation_list(self, limit=10, offset=0):
+
+    def conversation_list(self, limit=10, offset=0, ids=None):
         uri = CONVERSATION_PATH + '?' + self._format_query(limit, offset)
+        if ids is not None and type(ids) == list:
+            ids = [str(id).strip() for id in ids if str(id).strip()]
+            uri += '&ids=' + ','.join(ids[:20])
+
         return ConversationList().load(self.request(uri, 'GET', None, CONVERSATION_TYPE))
+
+    def conversation_list_by_contact(self, contactId, limit=10, offset=0, status="all"):
+        uri = CONVERSATION_PATH + '/' + CONVERSATION_CONTACT_PATH + '/' + str(contactId) + '?'
+        if status:
+            status = str(status).strip()
+            if status in CONVERSATION_STATUS_LIST:
+                uri += 'status=' + status + '&'
+        uri += self._format_query(limit, offset)
+        contact_conversations_response = self.request(uri, 'GET', None, CONVERSATION_TYPE)
+        contact_conversations_ids = contact_conversations_response.get('items', [])
+        if contact_conversations_ids:
+            return self.conversation_list(limit, offset, contact_conversations_ids)
+        return ConversationList().load(None)
 
     def conversation_start(self, start_request):
         uri = CONVERSATION_PATH + '/start'

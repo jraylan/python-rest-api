@@ -321,9 +321,13 @@ class Client(object):
     def contact_update(self, id, params=None):
         self.request_plain_text('contacts/' + str(id), 'PATCH', params)
 
-    def contact_list(self, limit=10, offset=0):
-        query = self._format_query(limit, offset)
-        return ContactList().load(self.request('contacts?' + query, 'GET', None))
+    def contact_list(self, limit=10, offset=0, params=None):
+        uri = 'contacts' 
+        if type(params) is not dict:
+            params = {}
+        params['limit'] = limit
+        params['offset'] = offset
+        return ContactList().load(self.request(uri, 'GET', params))
 
     def group(self, id):
         return Group().load(self.request('groups/' + str(id), 'GET', None))
@@ -361,25 +365,25 @@ class Client(object):
         self.request_plain_text('groups/' + str(groupId) + '/contacts/' + str(contactId), 'DELETE', None)
 
 
-    def conversation_list(self, limit=10, offset=0, ids=None):
-        uri = CONVERSATION_PATH + '?' + self._format_query(limit, offset)
-        if ids is not None and type(ids) == list:
-            ids = [str(id).strip() for id in ids if str(id).strip()]
-            uri += '&ids=' + ','.join(ids[:20])
-
-        return ConversationList().load(self.request(uri, 'GET', None, CONVERSATION_TYPE))
+    def conversation_list(self, limit=10, offset=0, params=None):
+        if type(params) is not dict:
+            params = {}
+        params['limit'] = limit
+        params['offset'] = offset
+        return ConversationList().load(self.request(CONVERSATION_PATH, 'GET', params, CONVERSATION_TYPE))
 
     def conversation_list_by_contact(self, contactId, limit=10, offset=0, status="all"):
-        uri = CONVERSATION_PATH + '/' + CONVERSATION_CONTACT_PATH + '/' + str(contactId) + '?'
-        if status:
-            status = str(status).strip()
-            if status in CONVERSATION_STATUS_LIST:
-                uri += 'status=' + status + '&'
-        uri += self._format_query(limit, offset)
-        contact_conversations_response = self.request(uri, 'GET', None, CONVERSATION_TYPE)
-        contact_conversations_ids = contact_conversations_response.get('items', [])
-        if contact_conversations_ids:
-            return self.conversation_list(limit, offset, contact_conversations_ids)
+        uri = CONVERSATION_PATH + '/' + CONVERSATION_CONTACT_PATH + '/' + str(contactId)
+        contact_query = {'limit': limit, 'offset': offset}
+        if status in CONVERSATION_STATUS_LIST:
+            contact_query['status'] = status
+        contact_conv_response = self.request(uri, 'GET', contact_query, CONVERSATION_TYPE)
+        contact_conv_ids = contact_conv_response.get('items', [])
+        if contact_conv_ids:
+            conversation_query = {
+                'ids': ','.join(contact_conv_ids[:20])
+            }
+            return self.conversation_list(limit, offset, conversation_query)
         return ConversationList().load(None)
 
     def conversation_start(self, start_request):

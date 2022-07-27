@@ -32,6 +32,8 @@ REST_TYPE = 'rest'
 
 CONVERSATION_API_ROOT = 'https://conversations.messagebird.com/v1/'
 CONVERSATION_PATH = 'conversations'
+CONVERSATION_CONTACT_PATH = 'contact'
+CONVERSATION_STATUS_LIST = ['active', 'archived', 'all']
 CONVERSATION_MESSAGES_PATH = 'messages'
 CONVERSATION_WEB_HOOKS_PATH = 'webhooks'
 CONVERSATION_TYPE = 'conversation'
@@ -360,6 +362,15 @@ class Client(object):
 
     def conversation_list(self, limit=10, offset=0):
         uri = CONVERSATION_PATH + '?' + self._format_query(limit, offset)
+        return ConversationList().load(self.request(uri, 'GET', None, CONVERSATION_TYPE))
+
+    def conversation_list_by_contact(self, contactId, limit=10, offset=0, status="all"):
+        uri = CONVERSATION_PATH + '/' + CONVERSATION_CONTACT_PATH + '/' + str(contactId) + '?'
+        if status:
+            status = str(status).strip()
+            if status in CONVERSATION_STATUS_LIST:
+                uri += 'status=' +  str(status) + '&'
+        uri += self._format_query(limit, offset)
         return ConversationList().load(self.request(uri, 'GET', None, CONVERSATION_TYPE))
 
     def conversation_start(self, start_request):
